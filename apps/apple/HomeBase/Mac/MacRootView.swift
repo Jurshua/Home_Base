@@ -13,6 +13,7 @@ struct MacRootView: View {
     @Environment(HubStore.self) private var hub
     @State private var tab: MacTab = .home
     @State private var palette = false
+    @State private var scrolled = false
 
     var body: some View {
         ZStack(alignment: .top) {
@@ -20,7 +21,7 @@ struct MacRootView: View {
 
             Group {
                 switch tab {
-                case .home: MacHomeView(tab: $tab)
+                case .home: MacHomeView(tab: $tab, scrolled: $scrolled)
                 case .media: MacPage { LaunchGrid(columns: 4) }
                 case .lights: MacPage { ComingSoon(title: "Lights", icon: "lightbulb", note: "Philips Hue arrives in milestone 5.") }
                 case .scenes: MacPage { ComingSoon(title: "Scenes", icon: "sparkles.rectangle.stack", note: "Movie night, Game time and Wind down arrive in milestone 6.") }
@@ -30,7 +31,7 @@ struct MacRootView: View {
             }
             .transition(.opacity)
 
-            MacHeader(tab: $tab, palette: $palette)
+            MacHeader(tab: $tab, palette: $palette, backdrop: tab != .home || scrolled)
         }
         .animation(Theme.settle, value: tab)
         .frame(minWidth: 900, minHeight: 640)
@@ -58,6 +59,8 @@ struct MacHeader: View {
     @Environment(HubStore.self) private var hub
     @Binding var tab: MacTab
     @Binding var palette: Bool
+    /// Off over the top of the Home hero so the artwork runs to the top edge, on once content scrolls under.
+    var backdrop = true
     @Namespace private var pill
 
     var body: some View {
@@ -122,6 +125,8 @@ struct MacHeader: View {
                                    .init(color: .black.opacity(0), location: 1)], startPoint: .top, endPoint: .bottom)
                 .padding(.bottom, -40)
                 .ignoresSafeArea()
+                .opacity(backdrop ? 1 : 0)
+                .animation(Theme.settle, value: backdrop)
                 .allowsHitTesting(false)
         }
     }

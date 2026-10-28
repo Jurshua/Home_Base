@@ -5,6 +5,7 @@ struct MacHomeView: View {
     @Environment(HubStore.self) private var hub
     @Environment(Selection.self) private var selection
     @Binding var tab: MacTab
+    @Binding var scrolled: Bool
 
     var body: some View {
         let screens = hub.screens
@@ -44,6 +45,7 @@ struct MacHomeView: View {
             .padding(.bottom, 48)
         }
         .scrollIndicators(.hidden)
+        .reportsScrolled($scrolled)
         .ignoresSafeArea(edges: .top)
     }
 
@@ -206,5 +208,19 @@ struct DeviceTile: View {
         }
         if !device.can("power_off") && device.reachable { return "Runs the hub" }
         return device.reachable || device.power == .off ? "Off" : "Not responding"
+    }
+}
+
+private extension View {
+    /// Sets `scrolled` once the page moves more than a few points. Before macOS 15 it stays true,
+    /// so the header keeps its backdrop.
+    @ViewBuilder func reportsScrolled(_ scrolled: Binding<Bool>) -> some View {
+        if #available(macOS 15.0, iOS 18.0, *) {
+            self.onScrollGeometryChange(for: Bool.self) { $0.contentOffset.y + $0.contentInsets.top > 24 } action: { _, now in
+                scrolled.wrappedValue = now
+            }
+        } else {
+            self.onAppear { scrolled.wrappedValue = true }
+        }
     }
 }
