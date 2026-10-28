@@ -23,8 +23,18 @@ if [ ! -f "$DATA/hub.toml" ]; then
 fi
 
 sed -e "s|__VENV__|$VENV|g" -e "s|__DATA__|$DATA|g" "$HERE/deploy/com.homebase.hub.plist" > "$PLIST"
-launchctl bootout "gui/$(id -u)/com.homebase.hub" 2>/dev/null || true
-launchctl bootstrap "gui/$(id -u)" "$PLIST"
+DOMAIN="gui/$(id -u)"
+launchctl bootout "$DOMAIN/com.homebase.hub" 2>/dev/null || true
+# bootout returns before launchd has finished unloading; bootstrapping too soon fails with error 5.
+for _ in $(seq 1 20); do
+  launchctl print "$DOMAIN/com.homebase.hub" >/dev/null 2>&1 || break
+  sleep 0.5
+done
+for attempt in 1 2 3; do
+  launchctl bootstrap "$DOMAIN" "$PLIST" && break
+  [ "$attempt" = 3 ] && { echo "Couldn't start the hub service. Check $DATA/hub.log"; exit 1; }
+  sleep 2
+done
 
 for _ in $(seq 1 20); do
   if curl -fsS "http://127.0.0.1:4900/api/health" >/dev/null 2>&1; then
