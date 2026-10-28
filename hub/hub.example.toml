@@ -1,0 +1,14 @@
+# Copy to ~/Library/Application Support/HomeBase/hub.toml and fill in your devices.
+
+[hub]
+host = "127.0.0.1"   # only this Mac until pairing lands in milestone 3; then "0.0.0.0"
+port = 4900
+poll_seconds = 5
+
+[[devices]]
+id = "lg"
+kind = "lg_webos"
+name = "LG TV"
+ip = "192.168.x.x"            # the TV's address (give it a fixed one in the router)
+mac = "aa:bb:cc:dd:ee:ff"     # for Wake-on-LAN
+# key_file = "~/Library/Application Support/HomeBase/lg-keys.sqlite"  # default; copy LG_Remote/keys.sqlite here to skip re-pairing
