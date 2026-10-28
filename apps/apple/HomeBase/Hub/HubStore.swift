@@ -37,6 +37,7 @@ final class HubStore {
     private var attempt = 0
     private var reconnect: Task<Void, Never>?
     private var heartbeat: Task<Void, Never>?
+    private var everLive = false
 
     static let addressKey = "hubAddress"
 
@@ -51,7 +52,14 @@ final class HubStore {
         self.address = address ?? UserDefaults.standard.string(forKey: HubStore.addressKey) ?? fallback
     }
 
-    var screens: [ScreenStatus] { ScreenSpot.all.map { ScreenStatus(spot: $0, devices: devices) } }
+    var screens: [ScreenStatus] {
+        let waiting: String? = switch link {
+        case .connecting where devices.isEmpty: "Connecting to the hub…"
+        case .offline where devices.isEmpty: "Can't reach the hub"
+        default: nil
+        }
+        return ScreenSpot.all.map { ScreenStatus(spot: $0, devices: devices, waiting: waiting) }
+    }
     func screen(_ id: String) -> ScreenStatus? { screens.first { $0.id == id } }
     var isDemo: Bool { link == .demo }
 
@@ -147,6 +155,12 @@ final class HubStore {
         socket = nil
         heartbeat?.cancel(); heartbeat = nil
         failAll(why)
+        // Never reached a hub and nobody typed an address (a Mac that isn't the Mac Mini):
+        // show the demo instead of an empty, offline app. Settings connects to the real hub.
+        if !everLive && UserDefaults.standard.string(forKey: HubStore.addressKey) == nil {
+            startDemo()
+            return
+        }
         link = .offline(why)
         let delay = min(15.0, pow(2.0, Double(attempt)))
         attempt += 1
@@ -171,6 +185,7 @@ final class HubStore {
             devices = Dictionary((frame.devices ?? []).map { ($0.id, $0) }, uniquingKeysWith: { $1 })
             link = .live
             attempt = 0
+            everLive = true
         case "device":
             if let d = frame.device { devices[d.id] = d }
         case "result":

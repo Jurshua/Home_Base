@@ -34,6 +34,7 @@ struct ScreenStatus: Identifiable {
     let title: String
     let meta: String
     let art: Artwork
+    let waiting: String?
 
     var id: String { spot.id }
     var isOn: Bool { phase == .on }
@@ -48,12 +49,14 @@ struct ScreenStatus: Identifiable {
         case .off: return "Off"
         case .needsPairing: return "Needs pairing"
         case .unreachable: return "Not responding"
-        case .notSetUp: return "Not set up yet"
+        case .notSetUp: return waiting == nil ? "Not set up yet" : "Waiting for the hub"
         }
     }
 
-    init(spot: ScreenSpot, devices: [String: Device]) {
+    /// `waiting` explains an empty screen while the hub is connecting or unreachable.
+    init(spot: ScreenSpot, devices: [String: Device], waiting: String? = nil) {
         self.spot = spot
+        self.waiting = waiting
         let display = spot.display.flatMap { devices[$0] }
         let player = spot.sources.lazy.compactMap { devices[$0] }.first { $0.apps?.isEmpty == false } ?? display
         self.display = display
@@ -61,8 +64,8 @@ struct ScreenStatus: Identifiable {
 
         guard let d = display else {
             phase = .notSetUp
-            title = spot.name
-            meta = spot.arrives
+            title = waiting ?? spot.name
+            meta = waiting == nil ? spot.arrives : "Home Base keeps trying. Make sure the Mac Mini is on."
             art = .off
             return
         }

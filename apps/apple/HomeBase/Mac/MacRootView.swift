@@ -74,6 +74,8 @@ struct MacHeader: View {
                     Button { tab = t } label: {
                         Text(t.rawValue)
                             .font(.system(size: 14, weight: sel ? .semibold : .medium))
+                            .lineLimit(1)
+                            .fixedSize()
                             .foregroundStyle(sel ? Color.black : Color.white.opacity(t.dimmed ? 0.45 : 0.85))
                             .padding(.horizontal, sel ? 18 : 16)
                             .frame(minHeight: 36)
@@ -89,6 +91,8 @@ struct MacHeader: View {
             .padding(4)
             .glass(in: Capsule())
             .overlay(Capsule().strokeBorder(.white.opacity(0.1)))
+            .fixedSize()
+            .layoutPriority(1)
             .animation(Theme.lift, value: tab)
 
             Button { palette = true } label: {
