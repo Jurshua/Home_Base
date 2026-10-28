@@ -35,6 +35,7 @@ li{font-size:13px;color:var(--dim);padding:6px 0;border-bottom:1px solid rgba(25
   <section>
     <div class="sub" style="margin-bottom:12px"><span class="dot" id="pdot"></span><span id="pstate">—</span></div>
     <div class="row2"><button data-act="power_on">Turn on</button><button data-act="power_off">Turn off</button></div>
+    <button id="pair" data-act="pair" style="display:none;width:100%;margin-top:8px;background:#fff;color:#000;font-weight:600">Pair, then press Yes on the TV</button>
   </section>
   <section id="remote">
     <h2>Remote</h2>
@@ -90,7 +91,10 @@ function draw() {
   const on = d.power === 'on';
   $('#pdot').className = 'dot' + (on ? ' on' : '');
   const app = (d.detail && d.detail.app || '').replace(/^com\.webos\.app\./, '');
-  $('#pstate').textContent = on ? `On · ${app}${d.detail.volume != null ? ' · vol ' + d.detail.volume : ''}${d.detail.muted ? ' · muted' : ''}` : (d.power === 'off' ? 'Off or not reachable' : 'Checking…');
+  $('#pstate').textContent = d.needs_pairing ? 'Needs pairing' + (d.reachable ? '' : ' · not reachable')
+    : on ? `On · ${app}${d.detail.volume != null ? ' · vol ' + d.detail.volume : ''}${d.detail.muted ? ' · muted' : ''}`
+    : d.power === 'off' ? (d.reachable ? 'Off (standby)' : 'Off or not reachable') : 'Checking…';
+  $('#pair').style.display = d.needs_pairing ? '' : 'none';
   $('#remote').style.display = d.actions.includes('button') ? '' : 'none';
   buttons($('#inputs'), d.inputs, 'input');
   buttons($('#apps'), d.apps, 'launch');

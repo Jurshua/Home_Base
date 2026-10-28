@@ -46,10 +46,13 @@ class Hub:
         self.history = history
         self.poll_seconds = poll_seconds
         self.state: dict[str, dict] = {
-            a.id: {**a.describe(), "power": "unknown", "reachable": False, "detail": {}, "updated": None}
+            a.id: {**a.describe(), "power": "unknown", "reachable": False, "needs_pairing": False,
+                   "detail": {}, "updated": None}
             for a in adapters}
         self._listeners: set[asyncio.Queue] = set()
         self._poller: asyncio.Task | None = None
+        self._tasks: set[asyncio.Task] = set()
+        self.settle_interval = 1.0
 
     # ---- listeners (each open app connection gets a queue) ----
     def subscribe(self) -> asyncio.Queue:
@@ -75,8 +78,8 @@ class Hub:
         a = self.adapters[device_id]
         st = await a.status()
         cur = self.state[device_id]
-        new = {**cur, "power": st.power, "reachable": st.reachable, "detail": st.detail}
-        changed = any(new[k] != cur[k] for k in ("power", "reachable", "detail"))
+        new = {**cur, "power": st.power, "reachable": st.reachable, "needs_pairing": st.needs_pairing, "detail": st.detail}
+        changed = any(new[k] != cur[k] for k in ("power", "reachable", "needs_pairing", "detail"))
         new["updated"] = time.time()
         self.state[device_id] = new
         if changed:
@@ -106,6 +109,8 @@ class Hub:
             except asyncio.CancelledError:
                 pass
             self._poller = None
+        for t in list(self._tasks):
+            t.cancel()
         for a in self.adapters.values():
             await a.close()
         self.history.close()
@@ -123,13 +128,23 @@ class Hub:
             self._publish({"type": "event", "event": self.history.add(device_id, action, arg, source, False, str(e)[:200])})
             raise
         self._publish({"type": "event", "event": self.history.add(device_id, action, arg, source, True, None)})
-        # Show the change quickly; a TV waking up takes a few seconds, so check again then.
-        asyncio.create_task(self._settle(device_id, 4.0 if action == "power_on" else 0.8))
+        # Show the change quickly. Power changes take a few seconds, so keep checking until the device gets there.
+        target = {"power_on": "on", "power_off": "off"}.get(action)
+        self._spawn(self._settle(device_id, target))
         return result
 
-    async def _settle(self, device_id: str, delay: float) -> None:
-        await asyncio.sleep(delay)
+    def _spawn(self, coro) -> None:
+        t = asyncio.create_task(coro)
+        self._tasks.add(t)
+        t.add_done_callback(self._tasks.discard)
+
+    async def _settle(self, device_id: str, target: str | None, timeout: float = 20.0) -> None:
         try:
-            await self.refresh(device_id)
+            await asyncio.sleep(0.8)
+            st = await self.refresh(device_id)
+            deadline = asyncio.get_running_loop().time() + timeout
+            while target and st["power"] != target and asyncio.get_running_loop().time() < deadline:
+                await asyncio.sleep(self.settle_interval)
+                st = await self.refresh(device_id)
         except Exception:
             log.exception("refresh after command failed")

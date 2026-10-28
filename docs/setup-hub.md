@@ -3,9 +3,9 @@
 1. Install Python 3.12 or newer if needed: `brew install python@3.12`.
 2. Clone this repo, then run `hub/deploy/install-mac.sh`. The first run creates `~/Library/Application Support/HomeBase/hub.toml` and stops.
 3. Open that file and fill in the LG TV's `ip` and `mac`. They're the `TV_IP` and `TV_MAC` lines at the top of `LG_Remote/remote.py`.
-4. Optional, skips the Yes/No prompt on the TV: copy `LG_Remote/keys.sqlite` to `~/Library/Application Support/HomeBase/lg-keys.sqlite`.
+4. Optional, skips pairing: copy `LG_Remote/keys.sqlite` to `~/Library/Application Support/HomeBase/lg-keys.sqlite`.
 5. Run `hub/deploy/install-mac.sh` again. It starts the hub as a background service that starts at login and restarts itself if it stops.
-6. Open http://127.0.0.1:4900 for the test page.
+6. Open http://127.0.0.1:4900 for the test page. If it says **Needs pairing**, press **Pair** and then **Yes** on the TV within a minute.
 
 If macOS asks whether Python may find devices on your local network, allow it, or the hub can't reach the TV.
 

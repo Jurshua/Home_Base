@@ -13,12 +13,15 @@ Every app talks to the hub on the Mac Mini, port 4900. Device ids come from `hub
   "buttons": ["UP", "DOWN", "LEFT", "RIGHT", "ENTER", "BACK", "HOME", "..."],
   "power": "on | off | unknown",
   "reachable": true,
+  "needs_pairing": false,
   "detail": {"app": "netflix", "volume": 12, "muted": false},
   "updated": 1761620000.0
 }
 ```
 
 `apps`, `inputs` and `buttons` appear only on devices that support them.
+
+`power` is the device's real state: a TV in standby still answers on the network (`reachable: true`) but reports `"off"`. When `needs_pairing` is true the hub has no working key for the device: `power` is `"unknown"`, other commands are refused, and the app should offer the `pair` action. The hub never starts pairing on its own, so the TV's prompt only appears when someone asks for it.
 
 ## Live connection: `ws://<hub>:4900/api/live`
 
@@ -41,7 +44,8 @@ Actions and their `arg`:
 
 | Action | `arg` |
 | --- | --- |
-| `power_on`, `power_off` | none |
+| `power_on`, `power_off` | none. After either, the hub keeps checking for up to 20 s and sends a `device` update once the power state matches |
+| `pair` | none. Shows the Yes/No prompt on the TV and waits up to 60 s |
 | `button` | one of the device's `buttons` |
 | `launch` | an app id |
 | `input` | an input id or name (`"HDMI 2"`) |

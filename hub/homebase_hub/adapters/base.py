@@ -15,6 +15,7 @@ class DeviceStatus:
     power: str  # "on", "off" or "unknown"
     reachable: bool
     detail: dict[str, Any] = field(default_factory=dict)
+    needs_pairing: bool = False
 
 
 class Adapter(ABC):
