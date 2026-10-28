@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Awaitable, Callable
 
 
 class CommandError(Exception):
@@ -37,6 +37,10 @@ class Adapter(ABC):
 
     @abstractmethod
     async def command(self, action: str, arg: Any = None) -> dict[str, Any]: ...
+
+    async def watch(self, changed: Callable[[], Awaitable[None]]) -> None:
+        """Optional: run forever, awaiting changed() whenever the device reports a change on its own.
+        Devices without push updates just get polled."""
 
     async def close(self) -> None:
         pass

@@ -50,3 +50,9 @@ kind = "computer"
 name = "Mac Mini"
 ip = "127.0.0.1"
 can_turn_off = false          # it runs the hub
+
+[[devices]]
+id = "hue"
+kind = "hue_bridge"
+name = "Lights"
+ip = "192.168.x.x"            # press the bridge's button, then Pair on the test page

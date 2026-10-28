@@ -80,7 +80,7 @@ class Hub:
         cur = self.state[device_id]
         # describe() is re-read because some adapters learn their app list after connecting
         new = {**cur, **a.describe(), "power": st.power, "reachable": st.reachable, "needs_pairing": st.needs_pairing, "detail": st.detail}
-        changed = any(new.get(k) != cur.get(k) for k in ("power", "reachable", "needs_pairing", "detail", "apps", "inputs"))
+        changed = any(new.get(k) != cur.get(k) for k in ("power", "reachable", "needs_pairing", "detail", "apps", "inputs", "actions"))
         new["updated"] = time.time()
         self.state[device_id] = new
         if changed:
@@ -98,9 +98,24 @@ class Hub:
                 log.exception("poll failed")
             await asyncio.sleep(self.poll_seconds)
 
+    async def _watch(self, a: Adapter) -> None:
+        async def changed():
+            await self.refresh(a.id)
+        while True:  # a watcher that drops out (bridge restart, network blip) is restarted
+            try:
+                await a.watch(changed)
+            except asyncio.CancelledError:
+                raise
+            except Exception:
+                log.exception("%s watcher stopped", a.id)
+            await asyncio.sleep(10)
+
     def start(self) -> None:
         if self._poller is None:
             self._poller = asyncio.create_task(self._poll_forever())
+            for a in self.adapters.values():
+                if type(a).watch is not Adapter.watch:  # only devices that push their own updates
+                    self._spawn(self._watch(a))
 
     async def stop(self) -> None:
         if self._poller:

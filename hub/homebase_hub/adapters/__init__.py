@@ -8,6 +8,7 @@ from .base import Adapter, CommandError, DeviceStatus
 from .appletv import AppleTV, storage_path
 from .computer import Computer
 from .fake import FakeTV
+from .hue import HueBridge
 from .lg import LGTV
 from .sony import SonyTV
 
@@ -26,6 +27,8 @@ def build(dev: DeviceConfig, cfg: HubConfig) -> Adapter:
     if dev.kind == "computer":
         return Computer(dev.id, dev.name, ip=o["ip"], mac=o.get("mac"), token=o.get("token"),
                         off_action=o.get("off_action", "sleep"), can_turn_off=o.get("can_turn_off", True))
+    if dev.kind == "hue_bridge":
+        return HueBridge(dev.id, dev.name, ip=o["ip"], key_file=cfg.data_dir / f"hue-{dev.id}.json")
     if dev.kind == "fake_tv":
         return FakeTV(dev.id, dev.name)
     raise ValueError(f"unknown device kind {dev.kind!r} for {dev.id!r}")

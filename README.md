@@ -17,4 +17,5 @@ The always-on Mac Mini runs the **hub**, the single source of truth. Every app (
 
 - **Milestone 1**: hub and the LG TV. Setup: [docs/setup-hub.md](docs/setup-hub.md).
 - **Milestone 2**: Sony TV, Apple TV, and waking, sleeping and shutting down the computers. Setup: [docs/setup-devices.md](docs/setup-devices.md).
+- **Hue lights** (from milestone 5, ahead of schedule): rooms, brightness and Hue scenes, live from the bridge.
 - Next: the SwiftUI app for iPhone, iPad and Mac, with pairing and live sync.
