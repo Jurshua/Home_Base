@@ -20,6 +20,9 @@ button.sel{background:#fff;color:#000;font-weight:600}
 .dpad{display:grid;grid-template-columns:repeat(3,64px);grid-template-rows:repeat(3,64px);gap:8px;justify-content:center}
 .dpad button{border-radius:20px;padding:0}.dpad .ok{border-radius:32px;background:var(--card2);font-weight:600}
 .small button{font-size:13px;padding:0 6px}
+.room{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;background:var(--card);border-radius:14px;padding:10px 12px}
+.room input{grid-column:1/3;width:100%;accent-color:#fff}
+.room button{min-height:32px}
 .err{color:var(--bad);font-size:13px;min-height:18px}
 ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px}
 li{font-size:13px;color:var(--dim);padding:6px 0;border-bottom:1px solid rgba(255,255,255,.06)}li b{color:var(--ink);font-weight:500}
@@ -35,7 +38,7 @@ li{font-size:13px;color:var(--dim);padding:6px 0;border-bottom:1px solid rgba(25
   <section>
     <div class="sub" style="margin-bottom:12px"><span class="dot" id="pdot"></span><span id="pstate">—</span></div>
     <div class="row2"><button data-act="power_on">Turn on</button><button data-act="power_off">Turn off</button></div>
-    <button id="pair" data-act="pair" style="display:none;width:100%;margin-top:8px;background:#fff;color:#000;font-weight:600">Pair, then press Yes on the TV</button>
+    <button id="pair" data-act="pair" style="display:none;width:100%;margin-top:8px;background:#fff;color:#000;font-weight:600">Pair</button>
   </section>
   <section id="remote">
     <h2>Remote</h2>
@@ -48,6 +51,8 @@ li{font-size:13px;color:var(--dim);padding:6px 0;border-bottom:1px solid rgba(25
     <div class="row" style="margin-top:14px"><button data-btn="VOLUMEDOWN">Vol −</button><button data-btn="VOLUMEUP">Vol +</button><button data-btn="MUTE">Mute</button><button data-btn="PLAY">Play</button></div>
   </section>
   <section id="inputsec"><h2>Inputs</h2><div class="row small" id="inputs"></div></section>
+  <section id="lightsec"><h2>Rooms</h2><div id="rooms" style="display:flex;flex-direction:column;gap:8px"></div>
+    <h2 style="margin-top:18px">Hue scenes</h2><div class="row small" id="scenes"></div></section>
   <section id="appsec"><h2>Apps</h2><div class="row small" id="apps"></div></section>
   <div class="err" id="err"></div>
   <section><h2>Recent</h2><ol id="log"></ol></section>
@@ -91,12 +96,34 @@ function draw() {
   const on = d.power === 'on';
   $('#pdot').className = 'dot' + (on ? ' on' : '');
   const app = (d.detail && d.detail.app || '').replace(/^com\.webos\.app\./, '');
-  $('#pstate').textContent = d.needs_pairing ? 'Needs pairing' + (d.reachable ? '' : ' · not reachable')
+  $('#pstate').textContent = d.needs_pairing ? (d.kind === 'hue_bridge' ? 'Needs pairing: press the bridge button, then Pair' : 'Needs pairing') + (d.reachable ? '' : ' · not reachable')
+    : on && d.kind === 'hue_bridge' ? `On · ${(d.detail.rooms || []).filter(r => r.on).length} of ${(d.detail.rooms || []).length} rooms`
     : on ? `On · ${app}${d.detail.volume != null ? ' · vol ' + d.detail.volume : ''}${d.detail.muted ? ' · muted' : ''}`
     : d.power === 'off' ? (d.reachable ? 'Off (standby)' : 'Off or not reachable') : 'Checking…';
   $('#remote').style.display = d.actions.includes('button') ? '' : 'none';
   buttons($('#inputs'), d.inputs, 'input');
   buttons($('#apps'), d.apps, 'launch');
+  const rooms = (d.detail && d.detail.rooms) || [], scenes = (d.detail && d.detail.scenes) || [];
+  $('#lightsec').style.display = d.kind === 'hue_bridge' && rooms.length ? '' : 'none';
+  if (d.kind === 'hue_bridge' && !document.activeElement.matches('.room input')) {
+    $('#rooms').innerHTML = '';
+    rooms.forEach(r => {
+      const row = document.createElement('div'); row.className = 'room';
+      row.innerHTML = '<span></span><button></button><input type="range" min="0" max="100">';
+      row.querySelector('span').textContent = `${r.name}${r.on ? ' · ' + r.brightness + '%' : ' · off'}`;
+      const b = row.querySelector('button'); b.textContent = r.on ? 'Turn off' : 'Turn on'; b.className = r.on ? 'sel' : '';
+      b.onclick = () => send('room', { room: r.id, on: !r.on });
+      const sl = row.querySelector('input'); sl.value = r.on ? r.brightness : 0;
+      sl.onchange = () => send('room', { room: r.id, brightness: Number(sl.value) });
+      $('#rooms').appendChild(row);
+    });
+    const names = Object.fromEntries(rooms.map(r => [r.id, r.name]));
+    $('#scenes').innerHTML = '';
+    scenes.forEach(sc => {
+      const b = document.createElement('button'); b.textContent = `${sc.name} · ${names[sc.room] || ''}`;
+      b.className = sc.active ? 'sel' : ''; b.onclick = () => send('scene', sc.id); $('#scenes').appendChild(b);
+    });
+  }
   $('#inputsec').style.display = (d.inputs || []).length ? '' : 'none';
   $('#appsec').style.display = (d.apps || []).length ? '' : 'none';
   document.querySelectorAll('[data-act]').forEach(b => b.style.display = d.actions.includes(b.dataset.act) && (b.dataset.act !== 'pair' || d.needs_pairing) ? '' : 'none');

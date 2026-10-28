@@ -25,6 +25,14 @@ If the test page says **Needs pairing** for the Sony, the key in `hub.toml` does
 
 With **Control TVs and Receivers** on in the Apple TV's settings and Bravia Sync (HDMI-CEC) on in the Sony, turning the Apple TV on from the hub also turns on the Sony and switches it to the Apple TV.
 
+## Philips Hue
+
+1. Find the bridge's IP in the Hue app: **Settings → Bridges → (your bridge) → ⓘ**. While you're there, check it's the square bridge; the round first-generation one doesn't have the API the hub uses.
+2. Set the `hue` device's `ip` in `hub.toml` and restart the hub.
+3. Open the test page, pick **Lights**, press the round button on top of the bridge, then press **Pair** within 30 seconds.
+
+Rooms, zones and the scenes you've made in the Hue app show up on their own, and stay in sync when you change them in the Hue app.
+
 ## Computers
 
 Turning a computer **on** is Wake-on-LAN, so the hub needs its MAC address. Turning it **off** (sleep or shut down) goes through a small helper running on that computer. The Mac and Windows apps will take this over later.
