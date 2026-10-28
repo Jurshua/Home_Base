@@ -12,7 +12,7 @@ struct HomeBaseApp: App {
                 #if os(macOS)
                 MacRootView()
                 #else
-                RootView()
+                AdaptiveRoot()
                 #endif
             }
             .homeBase(hub, selection)
@@ -55,6 +55,17 @@ private extension View {
     }
 }
 
+#if os(iOS)
+/// iPad (and a wide iPhone window) gets the Mac's tall page; iPhone gets its own tabs.
+struct AdaptiveRoot: View {
+    @Environment(\.horizontalSizeClass) private var size
+
+    var body: some View {
+        if size == .regular { MacRootView() } else { RootView() }
+    }
+}
+#endif
+
 enum Tab: String, CaseIterable, Identifiable {
     case home = "Home", screens = "Screens", launch = "Launch", lights = "Lights"
     var id: String { rawValue }
@@ -87,7 +98,7 @@ struct RootView: View {
                     switch tab {
                     case .home: HomeView(tab: $tab, path: $path)
                     case .screens: ScreensView(tab: $tab, path: $path)
-                    case .launch: LaunchView()
+                    case .launch: LaunchView(path: $path)
                     case .lights: LightsView()
                     }
                 }

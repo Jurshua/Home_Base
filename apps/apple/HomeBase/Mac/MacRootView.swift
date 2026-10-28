@@ -7,13 +7,17 @@ enum MacTab: String, CaseIterable, Identifiable {
     var dimmed: Bool { self == .vault || self == .pages }
 }
 
-/// The Mac window from the v3 mockup: one tall black page, a full-bleed hero with the header
-/// floating over it, then shelves. Also runs on iPad-sized windows later.
+/// The Mac and iPad layout from the v3 mockup: one tall black page, a full-bleed hero with the
+/// header floating over it, then shelves. iPhone uses RootView instead.
 struct MacRootView: View {
     @Environment(HubStore.self) private var hub
+    @Environment(\.openWindow) private var openWindow
     @State private var tab: MacTab = .home
     @State private var palette = false
     @State private var scrolled = false
+    @State private var remoteFor: RemoteTarget?
+
+    struct RemoteTarget: Identifiable { let id: String }
 
     var body: some View {
         ZStack(alignment: .top) {
@@ -22,7 +26,7 @@ struct MacRootView: View {
             Group {
                 switch tab {
                 case .home: MacHomeView(tab: $tab, scrolled: $scrolled)
-                case .media: MacPage { LaunchGrid(columns: 4) }
+                case .media: ScreenWall()
                 case .lights: MacPage { ComingSoon(title: "Lights", icon: "lightbulb", note: "Philips Hue arrives in milestone 5.") }
                 case .scenes: MacPage { ComingSoon(title: "Scenes", icon: "sparkles.rectangle.stack", note: "Movie night, Game time and Wind down arrive in milestone 6.") }
                 case .vault: MacPage { ComingSoon(title: "Vault", icon: "books.vertical", note: "Your Knowledge vault will live here.") }
@@ -34,7 +38,13 @@ struct MacRootView: View {
             MacHeader(tab: $tab, palette: $palette, backdrop: tab != .home || scrolled)
         }
         .animation(Theme.settle, value: tab)
+        #if os(macOS)
         .frame(minWidth: 900, minHeight: 640)
+        #endif
+        .sheet(item: $remoteFor) { target in
+            RemoteView(screenID: target.id, showsBack: false)
+                .presentationBackground(.black)
+        }
         .foregroundStyle(Theme.label)
         .overlay(alignment: .bottom) { Toast() }
         .overlay {
@@ -51,6 +61,14 @@ struct MacRootView: View {
                 .opacity(0)
                 .accessibilityHidden(true)
         }
+        // On Mac the remote is its own window; on iPad it slides up as a sheet.
+        .environment(\.openRemote, OpenRemote { id in
+            #if os(macOS)
+            openWindow(id: "remote", value: id)
+            #else
+            remoteFor = RemoteTarget(id: id)
+            #endif
+        })
     }
 }
 
@@ -66,8 +84,8 @@ struct MacHeader: View {
     var body: some View {
         HStack(spacing: 12) {
             HStack(spacing: 14) {
-                Text("Home Base").font(.system(size: 17, weight: .semibold))
-                LinkBadge()
+                Text("Home Base").font(.system(size: 17, weight: .semibold)).lineLimit(1).fixedSize()
+                ViewThatFits(in: .horizontal) { LinkBadge(); Color.clear.frame(width: 0) }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -99,9 +117,14 @@ struct MacHeader: View {
             .animation(Theme.lift, value: tab)
 
             Button { palette = true } label: {
-                HStack(spacing: 10) {
-                    Text("Search or run an action")
-                    Text("⌘K").foregroundStyle(.white.opacity(0.6)).font(.system(size: 12))
+                // Narrow windows (iPad portrait) keep just the magnifying glass.
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 10) {
+                        Text("Search or run an action")
+                        Text("⌘K").foregroundStyle(.white.opacity(0.6)).font(.system(size: 12))
+                    }
+                    .fixedSize()
+                    Image(systemName: "magnifyingglass").frame(width: 12)
                 }
                 .font(.system(size: 13))
                 .foregroundStyle(.white.opacity(0.75))
@@ -115,7 +138,11 @@ struct MacHeader: View {
             .frame(maxWidth: .infinity, alignment: .trailing)
         }
         // Leave room for the window's traffic lights on the left.
+        #if os(macOS)
         .padding(.leading, 84)
+        #else
+        .padding(.leading, 32)
+        #endif
         .padding(.trailing, 32)
         .padding(.top, 18)
         .padding(.bottom, 14)
@@ -194,4 +221,15 @@ struct MacPage<Content: View>: View {
         .environment(Selection())
         .preferredColorScheme(.dark)
         .frame(width: 1280, height: 860)
+}
+
+/// Opens the remote for a screen: a window on Mac, a sheet on iPad.
+struct OpenRemote {
+    let action: (String) -> Void
+    init(_ action: @escaping (String) -> Void) { self.action = action }
+    func callAsFunction(_ screen: String) { action(screen) }
+}
+
+extension EnvironmentValues {
+    @Entry var openRemote = OpenRemote { _ in }
 }

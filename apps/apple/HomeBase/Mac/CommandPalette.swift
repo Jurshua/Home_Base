@@ -4,7 +4,7 @@ import SwiftUI
 struct CommandPalette: View {
     @Environment(HubStore.self) private var hub
     @Environment(Selection.self) private var selection
-    @Environment(\.openWindow) private var openWindow
+    @Environment(\.openRemote) private var openRemote
     @Binding var isPresented: Bool
     @Binding var tab: MacTab
     @State private var query = ""
@@ -114,8 +114,8 @@ struct CommandPalette: View {
                 list.append(Action(id: "off-\(s.id)", title: "Turn off \(s.spot.name)", detail: s.title, icon: "power") {
                     hub.setPower(d.id, on: false)
                 })
-                list.append(Action(id: "remote-\(s.id)", title: "Remote for \(s.spot.name)", detail: "Window", icon: "appletvremote.gen4") {
-                    openWindow(id: "remote", value: s.id)
+                list.append(Action(id: "remote-\(s.id)", title: "Remote for \(s.spot.name)", detail: "Remote", icon: "appletvremote.gen4") {
+                    openRemote(s.id)
                 })
             } else if s.phase == .needsPairing {
                 list.append(Action(id: "pair-\(s.id)", title: "Pair \(s.spot.name)", detail: "Press Yes on the TV", icon: "link") {

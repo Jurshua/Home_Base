@@ -66,7 +66,7 @@ private extension View {
 struct MacHero: View {
     @Environment(HubStore.self) private var hub
     @Environment(Selection.self) private var selection
-    @Environment(\.openWindow) private var openWindow
+    @Environment(\.openRemote) private var openRemote
     let screen: ScreenStatus
     let launch: () -> Void
 
@@ -133,7 +133,7 @@ struct MacHero: View {
         HStack(spacing: 12) {
             switch screen.phase {
             case .on:
-                Pill(title: "Remote", style: .primary) { openRemote() }
+                Pill(title: "Remote", style: .primary) { openRemote(screen.id) }
                 Pill(title: "Launch", action: launch)
                 if let d = screen.display {
                     RoundButton(icon: "power", label: "Turn off \(screen.spot.name)", size: 48, busy: busy, glass: true) {
@@ -156,9 +156,6 @@ struct MacHero: View {
         }
     }
 
-    private func openRemote() {
-        openWindow(id: "remote", value: screen.id)
-    }
 }
 
 /// One hub device. White means on; click to turn it on or off.
