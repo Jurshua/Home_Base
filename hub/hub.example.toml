@@ -12,3 +12,41 @@ name = "LG TV"
 ip = "192.168.x.x"            # the TV's address (give it a fixed one in the router)
 mac = "aa:bb:cc:dd:ee:ff"     # for Wake-on-LAN
 # key_file = "~/Library/Application Support/HomeBase/lg-keys.sqlite"  # default; copy LG_Remote/keys.sqlite here to skip re-pairing
+
+[[devices]]
+id = "sony"
+kind = "sony_bravia"
+name = "Sony TV"
+ip = "192.168.x.x"
+psk = "pick-a-key"            # same as Pre-Shared Key under IP control on the TV
+# mac = "aa:bb:cc:dd:ee:ff"   # optional, also sends Wake-on-LAN on power on
+
+[[devices]]
+id = "appletv"
+kind = "apple_tv"
+name = "Apple TV"
+ip = "192.168.x.x"            # pair once: python -m homebase_hub pair-appletv appletv
+
+[[devices]]
+id = "pc"
+kind = "computer"
+name = "Gaming PC"
+ip = "192.168.x.x"
+mac = "aa:bb:cc:dd:ee:ff"     # for Wake-on-LAN
+token = "paste-from-helper"   # printed by the helper's install script
+off_action = "sleep"          # or "shutdown"
+
+[[devices]]
+id = "air"
+kind = "computer"
+name = "MacBook Air"
+ip = "192.168.x.x"
+mac = "aa:bb:cc:dd:ee:ff"
+token = "paste-from-helper"
+
+[[devices]]
+id = "mini"
+kind = "computer"
+name = "Mac Mini"
+ip = "127.0.0.1"
+can_turn_off = false          # it runs the hub

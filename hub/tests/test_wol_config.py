@@ -20,4 +20,4 @@ def test_config_loads_devices(tmp_path):
 def test_example_config_parses():
     from pathlib import Path
     cfg = config.load(Path(__file__).parent.parent / "hub.example.toml")
-    assert [d.id for d in cfg.devices] == ["lg"]
+    assert [d.id for d in cfg.devices] == ["lg", "sony", "appletv", "pc", "air", "mini"]
