@@ -1,0 +1,31 @@
+[project]
+name = "homebase-hub"
+version = "0.1.0"
+description = "The Home Base hub: the one service that talks to every screen, computer and light."
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "bscpylgtv>=0.5",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "pytest-asyncio>=0.23", "httpx>=0.27"]
+
+[project.scripts]
+homebase-hub = "homebase_hub.__main__:main"
+
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["homebase_hub*"]
+
+[tool.setuptools.package-data]
+homebase_hub = ["static/*"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]
