@@ -102,7 +102,9 @@ struct CommandPalette: View {
 
     private var actions: [Action] {
         var list: [Action] = []
-        for s in hub.screens where s.canControl {
+        // The screen you're looking at comes first, so "netflix" opens it there.
+        let screens = hub.screens.sorted { a, _ in a.id == selection.screen }
+        for s in screens where s.canControl {
             guard let d = s.display else { continue }
             if s.isOn {
                 list.append(Action(id: "off-\(s.id)", title: "Turn off \(s.spot.name)", detail: s.title, icon: "power") {
