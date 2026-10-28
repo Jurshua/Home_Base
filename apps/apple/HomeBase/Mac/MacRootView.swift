@@ -118,8 +118,9 @@ struct MacHeader: View {
         .padding(.bottom, 14)
         .background {
             // Content scrolls away under a dark fade, as on Apple TV, so the header stays readable.
-            LinearGradient(colors: [.black.opacity(0.9), .black.opacity(0.6), .clear], startPoint: .top, endPoint: .bottom)
-                .padding(.bottom, -36)
+            LinearGradient(stops: [.init(color: .black, location: 0), .init(color: .black, location: 0.62),
+                                   .init(color: .black.opacity(0), location: 1)], startPoint: .top, endPoint: .bottom)
+                .padding(.bottom, -40)
                 .ignoresSafeArea()
                 .allowsHitTesting(false)
         }

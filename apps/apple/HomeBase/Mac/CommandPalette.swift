@@ -94,10 +94,14 @@ struct CommandPalette: View {
         let all = actions
         let words = query.lowercased().split(separator: " ")
         guard !words.isEmpty else { return Array(all.prefix(8)) }
-        return all.filter { a in
+        let hits = all.filter { a in
             let hay = (a.title + " " + a.detail).lowercased()
             return words.allSatisfy { hay.contains($0) }
         }
+        // What you typed matching the action's name beats it matching the detail line,
+        // so "net" opens Netflix rather than turning off the TV that's showing it.
+        let inTitle = hits.filter { a in words.allSatisfy { a.title.lowercased().contains($0) } }
+        return inTitle + hits.filter { a in !inTitle.contains { $0.id == a.id } }
     }
 
     private var actions: [Action] {
