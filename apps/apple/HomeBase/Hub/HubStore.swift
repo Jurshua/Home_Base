@@ -29,6 +29,9 @@ final class HubStore {
     var failure: Failure?
     /// Device ids with a power change on the way, so buttons can show progress.
     private(set) var pending: Set<String> = []
+    /// The scene that ran last, and whether its steps are still going out.
+    var activePreset: String?
+    var presetRunning = false
 
     private(set) var address: String
     let source: String
@@ -443,7 +446,8 @@ extension HubStore {
         let tv = ["power_on", "power_off", "button", "launch", "input", "volume", "mute"]
         devices = [
             "lg": Device(id: "lg", name: "LG TV", kind: "lg_webos", actions: tv + ["pair"], apps: apps, inputs: inputs,
-                         buttons: ["UP", "DOWN", "LEFT", "RIGHT", "ENTER", "BACK", "HOME", "PLAY", "PAUSE", "VOLUMEUP", "VOLUMEDOWN"],
+                         buttons: ["UP", "DOWN", "LEFT", "RIGHT", "ENTER", "BACK", "EXIT", "HOME", "MENU", "INFO", "PLAY", "PAUSE",
+                                   "REWIND", "FASTFORWARD", "VOLUMEUP", "VOLUMEDOWN", "MUTE", "CHANNELUP", "CHANNELDOWN"],
                          power: .on, reachable: true, needsPairing: false,
                          detail: ["app": .string("netflix"), "volume": .number(12), "muted": .bool(false)], updated: nil),
             "sony": Device(id: "sony", name: "Sony TV", kind: "sony_bravia", actions: tv, apps: nil, inputs: inputs,
@@ -452,13 +456,53 @@ extension HubStore {
             "appletv": Device(id: "appletv", name: "Apple TV", kind: "apple_tv", actions: tv,
                               apps: [("Apple TV", "com.apple.TVWatchList"), ("Netflix", "com.netflix.Netflix"),
                                      ("YouTube", "com.google.ios.youtube"), ("Plex", "com.plexapp.plex")].map { Device.Option(name: $0.0, id: $0.1) },
-                              inputs: nil, buttons: nil, power: .off, reachable: true, needsPairing: false, detail: [:], updated: nil),
+                              inputs: nil, buttons: ["UP", "DOWN", "LEFT", "RIGHT", "ENTER", "BACK", "HOME", "MENU", "PLAYPAUSE", "REWIND", "FASTFORWARD", "VOLUMEUP", "VOLUMEDOWN"],
+                              power: .off, reachable: true, needsPairing: false, detail: [:], updated: nil),
+            "hue": Device(id: "hue", name: "Hue Bridge", kind: "hue_bridge", actions: ["power_on", "power_off", "room", "scene"],
+                          apps: nil, inputs: nil, buttons: nil, power: .on, reachable: true, needsPairing: false,
+                          detail: ["rooms": .array([
+                              HubStore.demoRoom("living", "Living room", on: true, 60),
+                              HubStore.demoRoom("desk", "Desk lamp", on: true, 80),
+                              HubStore.demoRoom("bed", "Bedroom", on: false, 0),
+                              HubStore.demoRoom("hall", "Hallway", on: false, 0),
+                          ])], updated: nil),
         ]
+    }
+
+    private static func demoRoom(_ id: String, _ name: String, on: Bool, _ brightness: Int) -> JSONValue {
+        .object(["id": .string(id), "name": .string(name), "kind": .string("room"), "on": .bool(on), "brightness": .number(Double(brightness))])
     }
 
     /// The demo hub acts like the hub's FakeTV: commands change state straight away.
     private func runDemo(_ id: String, _ action: String, _ arg: JSONValue?) throws {
         guard var d = devices[id] else { throw HubError("No device \(id)") }
+        if d.kind == "hue_bridge" {
+            var rooms = (d.detail["rooms"]?.array ?? []).compactMap(\.object)
+            for i in rooms.indices {
+                switch action {
+                case "power_on", "power_off":
+                    let on = action == "power_on"
+                    rooms[i]["on"] = .bool(on)
+                    rooms[i]["brightness"] = .number(on ? 100 : 0)
+                case "room":
+                    guard let a = arg?.object, a["room"]?.string == rooms[i]["id"]?.string else { continue }
+                    if let level = a["brightness"]?.int {
+                        rooms[i]["brightness"] = .number(Double(level))
+                        rooms[i]["on"] = .bool(level > 0)
+                    }
+                    if let on = a["on"]?.bool {
+                        rooms[i]["on"] = .bool(on)
+                        if on, (rooms[i]["brightness"]?.int ?? 0) == 0 { rooms[i]["brightness"] = .number(60) }
+                        if !on { rooms[i]["brightness"] = .number(0) }
+                    }
+                default: break
+                }
+            }
+            d.detail["rooms"] = .array(rooms.map(JSONValue.object))
+            d.power = rooms.contains { $0["on"]?.bool == true } ? .on : .off
+            devices[id] = d
+            return
+        }
         switch action {
         case "power_on":
             d.power = .on

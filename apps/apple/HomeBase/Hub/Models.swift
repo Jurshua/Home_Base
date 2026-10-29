@@ -29,6 +29,8 @@ enum JSONValue: Codable, Hashable {
     var string: String? { if case .string(let s) = self { return s }; return nil }
     var int: Int? { if case .number(let n) = self { return Int(n) }; return nil }
     var bool: Bool? { if case .bool(let b) = self { return b }; return nil }
+    var array: [JSONValue]? { if case .array(let a) = self { return a }; return nil }
+    var object: [String: JSONValue]? { if case .object(let o) = self { return o }; return nil }
 }
 
 /// A device as the hub describes it. See shared/protocol/README.md.

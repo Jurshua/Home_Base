@@ -98,6 +98,12 @@ final class Selection {
     var screen: String = UserDefaults.standard.string(forKey: "selectedScreen") ?? "lg" {
         didSet { UserDefaults.standard.set(screen, forKey: "selectedScreen") }
     }
+    /// The screen Mac Home has zoomed into, or nil for the dashboard.
+    var focused: String?
+    /// The slide-up remote on Mac Home is pulled all the way up.
+    var remoteOpen = false
+    /// What each screen was last asked to play from a show row, so the hero can name it.
+    var showing: [String: MediaItem] = [:]
 }
 
 struct RootView: View {
