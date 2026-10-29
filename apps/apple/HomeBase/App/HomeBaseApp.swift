@@ -55,7 +55,7 @@ private struct PairingSheet: ViewModifier {
     @Environment(HubStore.self) private var hub
 
     func body(content: Content) -> some View {
-        content.sheet(isPresented: Binding(get: { hub.needsPairing }, set: { _ in })) {
+        content.sheet(isPresented: Binding(get: { hub.needsPairing || hub.tryingWithoutKey }, set: { _ in })) {
             PairingView().interactiveDismissDisabled()
         }
     }

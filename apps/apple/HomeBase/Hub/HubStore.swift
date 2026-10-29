@@ -67,6 +67,8 @@ final class HubStore {
     func screen(_ id: String) -> ScreenStatus? { screens.first { $0.id == id } }
     var isDemo: Bool { link == .demo }
     var needsPairing: Bool { link == .needsPairing }
+    /// Connecting to a remote hub with no key: keep the pairing screen up until the hub answers.
+    var tryingWithoutKey: Bool { link == .connecting && token == nil && !isLocal }
 
     /// The hub is on this machine, so it trusts us without a key.
     var isLocal: Bool { ["localhost", "127.0.0.1", "::1"].contains(host.split(separator: ":").first.map(String.init) ?? "") }
@@ -120,10 +122,8 @@ final class HubStore {
     }
 
     private func open() {
-        if token == nil && !isLocal {
-            link = .needsPairing
-            return
-        }
+        // No key yet: try anyway. A hub that requires pairing refuses with 4401 and we show the
+        // pairing screen; an older hub without pairing just lets us in.
         guard let url = liveURL else {
             link = .offline("That hub address doesn't look right")
             return
