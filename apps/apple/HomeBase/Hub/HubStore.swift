@@ -5,7 +5,7 @@ import UIKit
 #endif
 
 /// The app's one connection to the hub on the Mac Mini, and the live state of every device.
-/// With no hub address it runs in demo mode with pretend devices, so the app is never empty.
+/// First run shows the pairing screen; with the address cleared on purpose it runs a demo with pretend devices.
 @MainActor
 @Observable
 final class HubStore {
@@ -14,6 +14,8 @@ final class HubStore {
         case connecting
         case live
         case offline(String)
+        /// The hub turned our key down (or we have none): show the pairing screen.
+        case needsPairing
     }
 
     struct Failure: Identifiable, Equatable {
@@ -38,6 +40,8 @@ final class HubStore {
     private var reconnect: Task<Void, Never>?
     private var heartbeat: Task<Void, Never>?
     private var everLive = false
+    /// This device's hub key. Apps on the Mac Mini itself don't need one.
+    private var token: String? = HubKey.load()
 
     static let addressKey = "hubAddress"
 
@@ -62,13 +66,31 @@ final class HubStore {
     }
     func screen(_ id: String) -> ScreenStatus? { screens.first { $0.id == id } }
     var isDemo: Bool { link == .demo }
+    var needsPairing: Bool { link == .needsPairing }
+    /// Connecting to a remote hub with no key: keep the pairing screen up until the hub answers.
+    var tryingWithoutKey: Bool { link == .connecting && token == nil && !isLocal }
+
+    /// The hub is on this machine, so it trusts us without a key.
+    var isLocal: Bool { ["localhost", "127.0.0.1", "::1"].contains(host.split(separator: ":").first.map(String.init) ?? "") }
+
+    /// "mac-mini.local:4900" from whatever was typed or found.
+    var host: String {
+        var h = address
+        for scheme in ["http://", "https://", "ws://", "wss://"] where h.hasPrefix(scheme) {
+            h.removeFirst(scheme.count)
+        }
+        h = h.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        if !h.isEmpty && !h.contains(":") { h += ":4900" }
+        return h
+    }
 
     // MARK: Connection
 
     func start() {
         guard socket == nil, reconnect == nil else { return }
         if address.trimmingCharacters(in: .whitespaces).isEmpty {
-            startDemo()
+            // An address cleared on purpose means demo; no address ever means first run: find and pair.
+            if UserDefaults.standard.string(forKey: HubStore.addressKey) != nil { startDemo() } else { link = .needsPairing }
         } else {
             open()
         }
@@ -86,7 +108,7 @@ final class HubStore {
 
     /// Called when the app comes back to the foreground: reconnect now instead of waiting.
     func resume() {
-        guard link != .demo else { return }
+        guard link != .demo, link != .needsPairing else { return }
         if socket == nil || link != .live {
             close()
             open()
@@ -94,16 +116,14 @@ final class HubStore {
     }
 
     private var liveURL: URL? {
-        var host = address
-        for scheme in ["http://", "https://", "ws://", "wss://"] where host.hasPrefix(scheme) {
-            host.removeFirst(scheme.count)
-        }
-        host = host.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
-        if !host.contains(":") { host += ":4900" }
-        return URL(string: "ws://\(host)/api/live")
+        var c = URLComponents(string: "ws://\(host)/api/live")
+        if let token, !isLocal { c?.queryItems = [URLQueryItem(name: "token", value: token)] }
+        return c?.url
     }
 
     private func open() {
+        // No key yet: try anyway. A hub that requires pairing refuses with 4401 and we show the
+        // pairing screen; an older hub without pairing just lets us in.
         guard let url = liveURL else {
             link = .offline("That hub address doesn't look right")
             return
@@ -146,6 +166,21 @@ final class HubStore {
                 handle(data)
             }
         } catch {
+            // 4401: the hub doesn't know our key (never paired, or this device was removed).
+            let refused = task.closeCode.rawValue == 4401 || (task.response as? HTTPURLResponse)?.statusCode == 401
+            if refused, socket === task {
+                socket = nil
+                heartbeat?.cancel(); heartbeat = nil
+                failAll("This device needs pairing")
+                forgetKey()
+                link = .needsPairing
+                return
+            }
+            // -1009 for a hub on the LAN usually means macOS or iOS hasn't granted Local Network access.
+            if (error as? URLError)?.code == .notConnectedToInternet, !isLocal {
+                dropped(task, "Home Base needs Local Network access. Turn it on in Settings › Privacy & Security › Local Network")
+                return
+            }
             dropped(task, "Can't reach the hub at \(address)")
         }
     }
@@ -155,10 +190,11 @@ final class HubStore {
         socket = nil
         heartbeat?.cancel(); heartbeat = nil
         failAll(why)
-        // Never reached a hub and nobody typed an address (a Mac that isn't the Mac Mini):
-        // show the demo instead of an empty, offline app. Settings connects to the real hub.
-        if !everLive && UserDefaults.standard.string(forKey: HubStore.addressKey) == nil {
-            startDemo()
+        // Never reached a hub and nobody chose one (a Mac that isn't the Mac Mini): show the
+        // pairing screen, which finds the hub on the network, instead of an empty, offline app.
+        if !everLive && UserDefaults.standard.string(forKey: HubStore.addressKey) == nil && token == nil {
+            address = ""
+            link = .needsPairing
             return
         }
         link = .offline(why)
@@ -296,6 +332,99 @@ struct HubError: LocalizedError {
     var errorDescription: String? { message }
 }
 
+// MARK: Pairing
+
+extension HubStore {
+    struct PairingCode: Decodable, Equatable {
+        let code: String
+        let expires: Double
+    }
+
+    struct Client: Decodable, Identifiable, Hashable {
+        let id: String
+        let name: String
+        let created: Double?
+        let lastSeen: Double?
+    }
+
+    /// A name for this device as the hub will list it, like "Josh's iPhone".
+    static var deviceName: String {
+        #if os(macOS)
+        return Host.current().localizedName ?? "Mac"
+        #else
+        return UIDevice.current.name
+        #endif
+    }
+
+    /// Trade a code from a trusted device for this device's key, then connect with it.
+    func pair(code: String, name: String) async throws {
+        struct Body: Encodable { let code: String; let name: String }
+        struct Reply: Decodable { let token: String }
+        let data = try await http("POST", "/api/pair", body: Body(code: code, name: name), authorized: false)
+        let reply = try HubStore.decoder.decode(Reply.self, from: data)
+        HubKey.save(reply.token)
+        token = reply.token
+        UserDefaults.standard.set(address, forKey: HubStore.addressKey)
+        close()
+        open()
+    }
+
+    /// On a trusted device: a one-time code another device can pair with for the next 5 minutes.
+    func newPairingCode() async throws -> PairingCode {
+        try HubStore.decoder.decode(PairingCode.self, from: try await http("POST", "/api/pairing-codes"))
+    }
+
+    func pairedDevices() async throws -> [Client] {
+        try HubStore.decoder.decode([Client].self, from: try await http("GET", "/api/clients"))
+    }
+
+    func remove(_ client: Client) async throws {
+        _ = try await http("DELETE", "/api/clients/\(client.id)")
+    }
+
+    func forgetKey() {
+        HubKey.delete()
+        token = nil
+    }
+
+    private struct NoBody: Encodable {}
+
+    private func http(_ method: String, _ path: String) async throws -> Data {
+        try await http(method, path, body: NoBody?.none)
+    }
+
+    /// One HTTP call to the hub with this device's key. A 401 means the key is gone: pair again.
+    private func http<B: Encodable>(_ method: String, _ path: String, body: B?, authorized: Bool = true) async throws -> Data {
+        guard let url = URL(string: "http://\(host)\(path)") else { throw HubError("That hub address doesn't look right") }
+        var req = URLRequest(url: url, timeoutInterval: 10)
+        req.httpMethod = method
+        if authorized, let token, !isLocal { req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization") }
+        if let body {
+            req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            req.httpBody = try JSONEncoder().encode(body)
+        }
+        let result: (Data, URLResponse)
+        do { result = try await URLSession.shared.data(for: req) } catch {
+            throw HubError("Can't reach the hub at \(address)")
+        }
+        let (data, response) = result
+        let status = (response as? HTTPURLResponse)?.statusCode ?? 0
+        switch status {
+        case 200..<300: return data
+        case 401:
+            forgetKey()
+            close()
+            link = .needsPairing
+            throw HubError("This device needs pairing")
+        case 403 where path == "/api/pair": throw HubError("That code didn't work. Check it, or get a new one")
+        case 429: throw HubError("Too many wrong codes. Wait 5 minutes and get a new one")
+        default:
+            let detail = (try? JSONDecoder().decode(HubErrorDetail.self, from: data))?.detail
+            throw HubError(detail ?? "The hub said no (\(status))")
+        }
+    }
+}
+
 // MARK: Demo mode
 
 extension HubStore {
@@ -357,3 +486,6 @@ extension HubStore {
         if id == "appletv", action == "power_on" || action == "launch" { devices["sony"]?.power = .on; devices["sony"]?.detail["app"] = d.detail["app"] }
     }
 }
+
+/// FastAPI puts the reason for a refused request under "detail".
+private struct HubErrorDetail: Decodable { let detail: String? }

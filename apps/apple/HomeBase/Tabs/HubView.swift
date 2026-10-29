@@ -5,6 +5,7 @@ import SwiftUI
 struct HubView: View {
     @Environment(HubStore.self) private var hub
     @State private var draft = ""
+    @State private var finder = HubFinder()
 
     var body: some View {
         ScrollView {
@@ -34,6 +35,25 @@ struct HubView: View {
                     Text("The Mac Mini's name or IP and port 4900. Leave it empty to try Home Base with pretend devices.")
                         .font(.system(size: 12))
                         .foregroundStyle(Theme.tertiary)
+                    ForEach(finder.found.filter { $0.address != hub.host }) { f in
+                        Button { draft = f.address; hub.use(address: f.address) } label: {
+                            HStack {
+                                Image(systemName: "dot.radiowaves.left.and.right")
+                                Text("Found \(f.name) at \(f.address)").font(.system(size: 14))
+                                Spacer()
+                                Text("Use").font(.system(size: 13, weight: .semibold))
+                            }
+                            .padding(.horizontal, 14)
+                            .frame(minHeight: 44)
+                            .background(Theme.fillSoft, in: Capsule())
+                            .contentShape(Capsule())
+                        }
+                        .buttonStyle(PressButtonStyle())
+                    }
+                }
+
+                if hub.link == .live {
+                    PairAnotherDevice()
                 }
 
                 if !hub.devices.isEmpty {
@@ -67,7 +87,8 @@ struct HubView: View {
         .scrollIndicators(.hidden)
         .background(Theme.ground.ignoresSafeArea())
         .foregroundStyle(.white)
-        .onAppear { draft = hub.address }
+        .onAppear { draft = hub.address; finder.start() }
+        .onDisappear { finder.stop() }
     }
 
     private var linkText: String {
@@ -76,6 +97,7 @@ struct HubView: View {
         case .connecting: return "Connecting to \(hub.address)…"
         case .live: return "Live with \(hub.address)"
         case .offline(let why): return why
+        case .needsPairing: return "This device isn't paired with \(hub.address) yet"
         }
     }
 

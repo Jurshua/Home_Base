@@ -12,7 +12,7 @@ struct HomeBaseApp: App {
                 #if os(macOS)
                 MacRootView()
                 #else
-                RootView()
+                AdaptiveRoot()
                 #endif
             }
             .homeBase(hub, selection)
@@ -46,6 +46,21 @@ struct HomeBaseApp: App {
     }
 }
 
+extension View {
+    /// Shows the pairing screen whenever the hub doesn't know this device.
+    func pairingSheet() -> some View { modifier(PairingSheet()) }
+}
+
+private struct PairingSheet: ViewModifier {
+    @Environment(HubStore.self) private var hub
+
+    func body(content: Content) -> some View {
+        content.sheet(isPresented: Binding(get: { hub.needsPairing || hub.tryingWithoutKey }, set: { _ in })) {
+            PairingView().interactiveDismissDisabled()
+        }
+    }
+}
+
 private extension View {
     func homeBase(_ hub: HubStore, _ selection: Selection) -> some View {
         self.environment(hub)
@@ -54,6 +69,17 @@ private extension View {
             .tint(.white)
     }
 }
+
+#if os(iOS)
+/// iPad (and a wide iPhone window) gets the Mac's tall page; iPhone gets its own tabs.
+struct AdaptiveRoot: View {
+    @Environment(\.horizontalSizeClass) private var size
+
+    var body: some View {
+        if size == .regular { MacRootView() } else { RootView() }
+    }
+}
+#endif
 
 enum Tab: String, CaseIterable, Identifiable {
     case home = "Home", screens = "Screens", launch = "Launch", lights = "Lights"
@@ -87,7 +113,7 @@ struct RootView: View {
                     switch tab {
                     case .home: HomeView(tab: $tab, path: $path)
                     case .screens: ScreensView(tab: $tab, path: $path)
-                    case .launch: LaunchView()
+                    case .launch: LaunchView(path: $path)
                     case .lights: LightsView()
                     }
                 }
@@ -108,6 +134,7 @@ struct RootView: View {
         }
         .overlay(alignment: .bottom) { Toast() }
         .foregroundStyle(Theme.label)
+        .pairingSheet()
     }
 }
 

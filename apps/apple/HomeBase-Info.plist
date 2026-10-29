@@ -2,6 +2,11 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<!-- The hub announces itself as _homebase._tcp -->
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_homebase._tcp</string>
+	</array>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<!-- The hub speaks plain ws:// on the home network -->

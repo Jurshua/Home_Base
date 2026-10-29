@@ -267,6 +267,7 @@ struct QuickTiles: View {
         case .connecting: return "Connecting to the hub…"
         case .live: return "Live with the hub on the Mac Mini"
         case .offline: return "Can't reach the hub"
+        case .needsPairing: return "Pair this device with the hub"
         }
     }
 
@@ -274,7 +275,7 @@ struct QuickTiles: View {
         switch hub.link {
         case .live: return Theme.live
         case .connecting, .demo: return Theme.faint
-        case .offline: return .orange
+        case .offline, .needsPairing: return .orange
         }
     }
 }
