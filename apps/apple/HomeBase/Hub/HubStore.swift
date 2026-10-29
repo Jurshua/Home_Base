@@ -176,6 +176,11 @@ final class HubStore {
                 link = .needsPairing
                 return
             }
+            // -1009 for a hub on the LAN usually means macOS or iOS hasn't granted Local Network access.
+            if (error as? URLError)?.code == .notConnectedToInternet, !isLocal {
+                dropped(task, "Home Base needs Local Network access. Turn it on in Settings › Privacy & Security › Local Network")
+                return
+            }
             dropped(task, "Can't reach the hub at \(address)")
         }
     }
