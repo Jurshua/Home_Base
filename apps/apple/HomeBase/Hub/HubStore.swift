@@ -414,8 +414,7 @@ extension HubStore {
         case 403 where path == "/api/pair": throw HubError("That code didn't work. Check it, or get a new one")
         case 429: throw HubError("Too many wrong codes. Wait 5 minutes and get a new one")
         default:
-            struct Detail: Decodable { let detail: String? }
-            let detail = (try? JSONDecoder().decode(Detail.self, from: data))?.detail
+            let detail = (try? JSONDecoder().decode(HubErrorDetail.self, from: data))?.detail
             throw HubError(detail ?? "The hub said no (\(status))")
         }
     }
@@ -482,3 +481,6 @@ extension HubStore {
         if id == "appletv", action == "power_on" || action == "launch" { devices["sony"]?.power = .on; devices["sony"]?.detail["app"] = d.detail["app"] }
     }
 }
+
+/// FastAPI puts the reason for a refused request under "detail".
+private struct HubErrorDetail: Decodable { let detail: String? }
