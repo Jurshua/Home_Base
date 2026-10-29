@@ -15,6 +15,15 @@ Keep the TV's **Turn on via Wi-Fi** setting on, since power on is Wake-on-LAN. G
 
 The service runs while you're logged in, so set the Mac Mini to log in automatically (System Settings → Users & Groups) and to restart after a power failure (System Settings → Energy).
 
+## Letting the other devices in
+
+The hub listens on the whole home network (`host = "0.0.0.0"` in `hub.toml`), but only devices you've paired can use it. To add one:
+
+1. On the Mac Mini, open http://127.0.0.1:4900, scroll to **Paired devices** and press **Add a device**. A 6-digit code appears for 5 minutes.
+2. On the new device, open the Home Base app (or `http://<Mac Mini's name>.local:4900` in a browser) and type the code.
+
+The list under **Paired devices** shows everything that's paired; **Remove** cuts a device off straight away. If macOS asks whether Python may accept incoming connections, allow it.
+
 ## Running it by hand while developing
 
 ```bash

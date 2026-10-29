@@ -7,7 +7,7 @@ from homebase_hub.hub import History, Hub
 
 def client(tmp_path):
     hub = Hub([FakeTV("tv", "Test TV")], History(tmp_path / "h.sqlite"))
-    return TestClient(create_app(hub, poll=False)), hub
+    return TestClient(create_app(hub, poll=False, local_hosts=frozenset({"testclient"}))), hub
 
 
 def test_health_and_devices(tmp_path):

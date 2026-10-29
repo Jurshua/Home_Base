@@ -25,6 +25,8 @@ button.sel{background:#fff;color:#000;font-weight:600}
 .room button{min-height:32px}
 .err{color:var(--bad);font-size:13px;min-height:18px}
 ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px}
+input.code{width:100%;font:inherit;font-size:28px;letter-spacing:8px;text-align:center;background:var(--card);color:var(--ink);border:0;border-radius:14px;padding:10px}
+.big{font-size:40px;font-weight:700;letter-spacing:10px;text-align:center;padding:8px 0}
 li{font-size:13px;color:var(--dim);padding:6px 0;border-bottom:1px solid rgba(255,255,255,.06)}li b{color:var(--ink);font-weight:500}
 </style>
 </head>
@@ -55,17 +57,29 @@ li{font-size:13px;color:var(--dim);padding:6px 0;border-bottom:1px solid rgba(25
     <h2 style="margin-top:18px">Hue scenes</h2><div class="row small" id="scenes"></div></section>
   <section id="appsec"><h2>Apps</h2><div class="row small" id="apps"></div></section>
   <div class="err" id="err"></div>
-  <section><h2>Recent</h2><ol id="log"></ol></section>
+  <section id="joinsec" style="display:none"><h2>Pair this device</h2>
+    <p class="sub" style="margin:0 0 10px">On the Mac Mini (or any device that's already set up), open this page and press Add a device. Type the 6-digit code here.</p>
+    <input class="code" id="joincode" inputmode="numeric" maxlength="6" placeholder="000000" autocomplete="one-time-code">
+    <button id="joinbtn" style="width:100%;margin-top:8px;background:#fff;color:#000;font-weight:600">Pair</button></section>
+  <section id="logsec"><h2>Recent</h2><ol id="log"></ol></section>
+  <section id="devsec" style="display:none"><h2>Paired devices</h2>
+    <div id="codebox" style="display:none"><div class="big" id="code"></div><div class="sub" id="codehint" style="justify-content:center;margin-bottom:10px"></div></div>
+    <button id="addbtn" style="width:100%;margin-bottom:8px">Add a device</button>
+    <ol id="clients"></ol></section>
 </main>
 <script>
 const $ = s => document.querySelector(s);
 let ws, devices = {}, current = null, seq = 0;
+let token = null;
+try { token = localStorage.getItem('homebase-token'); } catch (e) {}
+const api = (path, opts = {}) => fetch(path, { ...opts, headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: 'Bearer ' + token } : {}), ...(opts.headers || {}) } });
 const pending = {};
 
 function connect() {
-  ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/api/live');
+  ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/api/live' + (token ? '?token=' + encodeURIComponent(token) : ''));
   ws.onopen = () => { $('#link').className = 'dot on'; $('#linktext').textContent = 'Live'; };
-  ws.onclose = () => { $('#link').className = 'dot'; $('#linktext').textContent = 'Reconnecting…'; setTimeout(connect, 1500); };
+  ws.onclose = e => {
+    if (e.code === 4401) { forget(); return; } $('#link').className = 'dot'; $('#linktext').textContent = 'Reconnecting…'; setTimeout(connect, 1500); };
   ws.onmessage = e => {
     const m = JSON.parse(e.data);
     if (m.type === 'snapshot') { devices = {}; m.devices.forEach(d => devices[d.id] = d); current = current && devices[current] ? current : (m.devices[0] || {}).id; draw(); }
@@ -142,8 +156,61 @@ document.querySelectorAll('[data-btn]').forEach(b => b.onclick = () => send('but
 document.querySelectorAll('[data-act]').forEach(b => b.onclick = () => send(b.dataset.act));
 const keys = { ArrowUp: 'UP', ArrowDown: 'DOWN', ArrowLeft: 'LEFT', ArrowRight: 'RIGHT', Enter: 'ENTER', Backspace: 'BACK', h: 'HOME', '+': 'VOLUMEUP', '=': 'VOLUMEUP', '-': 'VOLUMEDOWN', m: 'MUTE' };
 addEventListener('keydown', e => { const k = keys[e.key]; if (k) { e.preventDefault(); send('button', k); } });
-fetch('/api/history?limit=12').then(r => r.json()).then(rows => rows.reverse().forEach(addLog)).catch(() => {});
-connect();
+function forget() {
+  token = null; try { localStorage.removeItem('homebase-token'); } catch (e) {}
+  $('#link').className = 'dot'; $('#linktext').textContent = 'Not paired';
+  document.querySelectorAll('main > section').forEach(s => s.style.display = 'none');
+  $('#tabs').style.display = 'none'; $('#joinsec').style.display = '';
+}
+
+$('#joinbtn').onclick = async () => {
+  const name = prompt('Name this device', /iPhone|iPad|Android|Windows|Mac/.exec(navigator.userAgent)?.[0] || 'Browser');
+  if (!name) return;
+  const r = await api('/api/pair', { method: 'POST', body: JSON.stringify({ code: $('#joincode').value, name }) });
+  const j = await r.json();
+  if (!r.ok) { $('#err').textContent = j.detail; return; }
+  token = j.token; try { localStorage.setItem('homebase-token', token); } catch (e) {}
+  location.reload();
+};
+
+let codeTimer;
+$('#addbtn').onclick = async () => {
+  const j = await (await api('/api/pairing-codes', { method: 'POST' })).json();
+  $('#code').textContent = j.code; $('#codebox').style.display = '';
+  clearInterval(codeTimer);
+  const tick = () => {
+    const left = Math.round(j.expires - Date.now() / 1000);
+    if (left <= 0) { $('#codebox').style.display = 'none'; clearInterval(codeTimer); loadClients(); return; }
+    $('#codehint').textContent = `Type this on the new device · ${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')} left`;
+  };
+  tick(); codeTimer = setInterval(() => { tick(); loadClients(); }, 1000);
+};
+
+let shown = '';
+async function loadClients() {
+  const rows = await (await api('/api/clients')).json();
+  const key = JSON.stringify(rows.map(c => c.id)); if (key === shown) return;
+  if (shown && $('#codebox').style.display === '') { $('#codebox').style.display = 'none'; clearInterval(codeTimer); }  // the code was just used
+  shown = key;
+  $('#clients').innerHTML = rows.length ? '' : '<li>None yet</li>';
+  rows.forEach(c => {
+    const li = document.createElement('li'); li.style.display = 'flex'; li.style.alignItems = 'center'; li.style.gap = '8px';
+    li.innerHTML = '<b style="flex:1"></b><button style="min-height:32px">Remove</button>';
+    li.querySelector('b').textContent = c.name + (c.id === me.id ? ' (this one)' : '');
+    li.querySelector('button').onclick = async () => { if (confirm(`Remove ${c.name}? It will need a new code to connect again.`)) { await api('/api/clients/' + c.id, { method: 'DELETE' }); shown = ''; loadClients(); } };
+    $('#clients').appendChild(li);
+  });
+}
+
+let me = {};
+api('/api/me').then(async r => {
+  if (r.status === 401) return forget();
+  me = await r.json();
+  $('#devsec').style.display = '';
+  loadClients();
+  api('/api/history?limit=12').then(r => r.json()).then(rows => rows.reverse().forEach(addLog)).catch(() => {});
+  connect();
+});
 </script>
 </body>
 </html>

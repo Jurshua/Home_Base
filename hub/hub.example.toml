@@ -1,7 +1,7 @@
 # Copy to ~/Library/Application Support/HomeBase/hub.toml and fill in your devices.
 
 [hub]
-host = "127.0.0.1"   # only this Mac until pairing lands in milestone 3; then "0.0.0.0"
+host = "0.0.0.0"     # whole home network; other devices pair first. "127.0.0.1" keeps it to this Mac
 port = 4900
 poll_seconds = 5
 
