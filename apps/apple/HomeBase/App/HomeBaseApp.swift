@@ -46,6 +46,21 @@ struct HomeBaseApp: App {
     }
 }
 
+extension View {
+    /// Shows the pairing screen whenever the hub doesn't know this device.
+    func pairingSheet() -> some View { modifier(PairingSheet()) }
+}
+
+private struct PairingSheet: ViewModifier {
+    @Environment(HubStore.self) private var hub
+
+    func body(content: Content) -> some View {
+        content.sheet(isPresented: Binding(get: { hub.needsPairing }, set: { _ in })) {
+            PairingView().interactiveDismissDisabled()
+        }
+    }
+}
+
 private extension View {
     func homeBase(_ hub: HubStore, _ selection: Selection) -> some View {
         self.environment(hub)
@@ -119,6 +134,7 @@ struct RootView: View {
         }
         .overlay(alignment: .bottom) { Toast() }
         .foregroundStyle(Theme.label)
+        .pairingSheet()
     }
 }
 

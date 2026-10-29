@@ -41,6 +41,7 @@ struct MacRootView: View {
         #if os(macOS)
         .frame(minWidth: 900, minHeight: 640)
         #endif
+        .pairingSheet()
         .sheet(item: $remoteFor) { target in
             RemoteView(screenID: target.id, showsBack: false)
                 .presentationBackground(.black)
@@ -182,13 +183,14 @@ struct LinkBadge: View {
         case .connecting: return "Connecting…"
         case .live: return "Live · \(hub.devices.count) devices"
         case .offline: return "Hub offline"
+        case .needsPairing: return "Not paired"
         }
     }
 
     private var color: Color {
         switch hub.link {
         case .live: return Theme.live
-        case .offline: return .orange
+        case .offline, .needsPairing: return .orange
         default: return Theme.faint
         }
     }

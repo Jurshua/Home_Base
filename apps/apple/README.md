@@ -7,9 +7,7 @@ One SwiftUI project. iPad uses the Mac layout, iPhone has its own tabs. Built Ma
 1. Open `HomeBase.xcodeproj` in Xcode 16 or later.
 2. Pick the **HomeBase** scheme and **My Mac**, then press ⌘R.
 
-On the Mac Mini it connects to the hub at `localhost:4900` on its own. Anywhere else, open Settings (⌘,) and type the Mac Mini's address. An empty address runs **demo mode** with pretend devices, so you can try the design anywhere.
-
-The hub only listens on the Mac Mini itself until milestone 3 adds pairing. To try the app from the MacBook Air or an iPhone before then, set `host = "0.0.0.0"` in the hub's `hub.toml` on the Mac Mini and restart it.
+On the Mac Mini it connects to the hub at `localhost:4900` on its own. Anywhere else it finds the hub on the network and asks to pair (see Pairing below). **Try the demo** on that screen, or clearing the address in Settings (⌘,), runs pretend devices so you can try the design anywhere.
 
 ## Put it on an iPhone or iPad
 
@@ -20,9 +18,16 @@ Xcode lives on the MacBook Air, so do this there. A free Apple ID is enough; the
 3. In Xcode, open `HomeBase.xcodeproj`, click the **HomeBase** project › **Signing & Capabilities**, and pick your Apple ID under **Team** (Xcode › Settings › Accounts to add it).
 4. Choose the device at the top of the window and press ⌘R.
 5. The first time, the device says the developer isn't trusted: Settings › General › VPN & Device Management › your Apple ID › **Trust**. Then open Home Base.
-6. Home Base asks to find devices on your local network: tap **Allow**. In the app, open the hub tile at the bottom of Home and type the Mac Mini's address.
+6. Home Base asks to find devices on your local network: tap **Allow**. It finds the hub by itself and asks for a pairing code.
 
-Until milestone 3 adds pairing, the hub only answers on the Mac Mini itself. To reach it from a phone, set `host = "0.0.0.0"` in `~/Library/Application Support/HomeBase/hub.toml` on the Mac Mini and restart the hub.
+## Pairing
+
+Home Base on the Mac Mini itself needs no pairing. Every other Mac, iPhone and iPad pairs once:
+
+1. On the Mac Mini (or any device that's already paired), open the Hub page (⌘, on Mac, the hub tile at the bottom of Home on iPhone) and press **Pair another device**. A 6-digit code shows for 5 minutes.
+2. On the new device, Home Base shows **Pair with your hub**, with the hub it found on the network already picked. Type the code.
+
+The key is kept in the Keychain and never expires. Remove a device from the same Hub page; it then asks to pair again.
 
 ## What works
 
