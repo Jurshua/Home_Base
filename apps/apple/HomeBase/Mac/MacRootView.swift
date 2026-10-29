@@ -181,7 +181,7 @@ struct LinkBadge: View {
         switch hub.link {
         case .demo: return "Demo"
         case .connecting: return "Connecting…"
-        case .live: return "Live · \(hub.devices.count) devices"
+        case .live: return "Live · \(hub.devices.count) \(hub.devices.count == 1 ? "device" : "devices")"
         case .offline: return "Hub offline"
         case .needsPairing: return "Not paired"
         }
