@@ -16,6 +16,10 @@ enum Theme {
 
     static let lift = Animation.spring(response: 0.32, dampingFraction: 0.72)
     static let settle = Animation.smooth(duration: 0.35)
+    /// A screen card growing into the hero, and back.
+    static let zoom = Animation.spring(response: 0.62, dampingFraction: 0.86)
+    /// The remote sliding up from the bottom and tucking back down.
+    static let sheet = Animation.spring(response: 0.5, dampingFraction: 0.84)
 }
 
 extension Font {
@@ -205,5 +209,27 @@ struct ArtworkView: View {
                            startRadius: 0, endRadius: 300)
         }
         .animation(Theme.settle, value: art)
+    }
+}
+
+// MARK: Entrances
+
+extension View {
+    /// Rises into place a moment after it appears, so rows follow the hero in.
+    func riseIn(delay: Double = 0, from offset: CGFloat = 60) -> some View {
+        modifier(RiseIn(delay: delay, offset: offset))
+    }
+}
+
+private struct RiseIn: ViewModifier {
+    let delay: Double
+    let offset: CGFloat
+    @State private var shown = false
+
+    func body(content: Content) -> some View {
+        content
+            .opacity(shown ? 1 : 0)
+            .offset(y: shown ? 0 : offset)
+            .onAppear { withAnimation(Theme.zoom.delay(delay)) { shown = true } }
     }
 }

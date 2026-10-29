@@ -11,6 +11,7 @@ enum MacTab: String, CaseIterable, Identifiable {
 /// header floating over it, then shelves. iPhone uses RootView instead.
 struct MacRootView: View {
     @Environment(HubStore.self) private var hub
+    @Environment(Selection.self) private var selection
     @Environment(\.openWindow) private var openWindow
     @State private var tab: MacTab = .home
     @State private var palette = false
@@ -47,6 +48,15 @@ struct MacRootView: View {
                 .presentationBackground(.black)
         }
         .foregroundStyle(Theme.label)
+        .overlay(alignment: .bottom) {
+            // A zoomed-in screen on Home gets the slide-up remote.
+            if tab == .home, let id = selection.focused, let screen = hub.screen(id), screen.display != nil {
+                RemoteSheet(screen: screen)
+                    .ignoresSafeArea(edges: .bottom)
+                    .transition(.move(edge: .bottom))
+            }
+        }
+        .onChange(of: tab) { _, _ in selection.remoteOpen = false }
         .overlay(alignment: .bottom) { Toast() }
         .overlay {
             if palette {

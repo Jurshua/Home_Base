@@ -193,6 +193,8 @@ struct AppCard: View {
     let app: Device.Option
     let width: CGFloat
     let playing: Bool
+    /// Replaces "APP" over the artwork, for example with the screen it opens on.
+    var caption: String? = nil
     let action: () -> Void
 
     var body: some View {
@@ -201,7 +203,7 @@ struct AppCard: View {
             ZStack(alignment: .bottomLeading) {
                 ArtworkView(art: art)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(playing ? "PLAYING" : "APP")
+                    Text(playing ? "PLAYING" : (caption ?? "App").uppercased())
                         .font(.system(size: 11, weight: .semibold))
                         .kerning(0.4)
                         .foregroundStyle(.white.opacity(0.75))

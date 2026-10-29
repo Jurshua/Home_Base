@@ -31,11 +31,12 @@ The key is kept in the Keychain and never expires. Remove a device from the same
 
 ## What works
 
-- **Home**: the chosen screen as the hero (switch screens from the eyebrow menu), Screens, apps to open on that screen, and a tile for every hub device. Opening an app turns its screen on first.
+- **Home**: a dashboard with scenes (Movie night, Desk work, Game time, Morning, All off), the three screens as big cards, Continue watching, Ready to launch, Hue rooms and every device. Click a screen and its card grows into the hero while the other screens shrink into the corner; underneath are rows of its apps, then movies and shows, then its inputs. Opening an app turns its screen on first.
+- **Slide-up remote** on a zoomed-in screen: a bar along the bottom with play/pause and volume. Click or drag it up for the full remote (power, input, mute, arrows and OK, back/home/menu, volume and channel rockers, skip back and forward), and click outside to tuck it down. Arrows and playback go to the Apple TV when it's what plays on the Sony.
 - **Remote** (⇧⌘R or the Remote button): its own small window. Swipe or use the arrow keys, Return selects, Esc goes back; volume, mute, inputs and power.
 - **⌘K**: type to turn screens on or off, open an app on a screen, switch inputs, or jump to a tab.
 - **Media**: the screen wall. Pick an app (or drag it) and tap the screen it should play on.
-- Lights, Scenes, Vault and Pages are placeholders until their milestones.
+- Continue watching and Movies & shows only have titles in demo mode until the hub can read the apps' libraries. Scenes skip steps for devices that aren't set up yet. The Lights, Scenes, Vault and Pages tabs are placeholders until their milestones.
 
 ## Layout
 
