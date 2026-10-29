@@ -19,7 +19,9 @@ Every app talks to the hub on the Mac Mini, port 4900. Device ids come from `hub
 }
 ```
 
-`apps`, `inputs` and `buttons` appear only on devices that support them.
+`apps`, `inputs` and `buttons` appear only on devices that support them. Sony and Apple TV learn their app list after the first connection, so `apps` can grow in a later `device` message.
+
+Device kinds: `lg_webos`, `sony_bravia`, `apple_tv`, `computer`. Each lists the actions it supports in `actions`; a computer has none until it has a MAC address (for `power_on`) or a helper token (for `power_off`, `sleep`, `shutdown`). Apple TV buttons add `PLAYPAUSE`, `NEXT` and `PREVIOUS`.
 
 `power` is the device's real state: a TV in standby still answers on the network (`reachable: true`) but reports `"off"`. When `needs_pairing` is true the hub has no working key for the device: `power` is `"unknown"`, other commands are refused, and the app should offer the `pair` action. The hub never starts pairing on its own, so the TV's prompt only appears when someone asks for it.
 
@@ -45,7 +47,8 @@ Actions and their `arg`:
 | Action | `arg` |
 | --- | --- |
 | `power_on`, `power_off` | none. After either, the hub keeps checking for up to 20 s and sends a `device` update once the power state matches |
-| `pair` | none. Shows the Yes/No prompt on the TV and waits up to 60 s |
+| `pair` | none. LG only: shows the Yes/No prompt on the TV and waits up to 60 s |
+| `sleep`, `shutdown` | none. Computers only. `power_off` does whichever the computer's `off_action` says |
 | `button` | one of the device's `buttons` |
 | `launch` | an app id |
 | `input` | an input id or name (`"HDMI 2"`) |

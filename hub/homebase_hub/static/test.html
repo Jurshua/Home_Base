@@ -47,8 +47,8 @@ li{font-size:13px;color:var(--dim);padding:6px 0;border-bottom:1px solid rgba(25
     </div>
     <div class="row" style="margin-top:14px"><button data-btn="VOLUMEDOWN">Vol −</button><button data-btn="VOLUMEUP">Vol +</button><button data-btn="MUTE">Mute</button><button data-btn="PLAY">Play</button></div>
   </section>
-  <section><h2>Inputs</h2><div class="row small" id="inputs"></div></section>
-  <section><h2>Apps</h2><div class="row small" id="apps"></div></section>
+  <section id="inputsec"><h2>Inputs</h2><div class="row small" id="inputs"></div></section>
+  <section id="appsec"><h2>Apps</h2><div class="row small" id="apps"></div></section>
   <div class="err" id="err"></div>
   <section><h2>Recent</h2><ol id="log"></ol></section>
 </main>
@@ -94,10 +94,12 @@ function draw() {
   $('#pstate').textContent = d.needs_pairing ? 'Needs pairing' + (d.reachable ? '' : ' · not reachable')
     : on ? `On · ${app}${d.detail.volume != null ? ' · vol ' + d.detail.volume : ''}${d.detail.muted ? ' · muted' : ''}`
     : d.power === 'off' ? (d.reachable ? 'Off (standby)' : 'Off or not reachable') : 'Checking…';
-  $('#pair').style.display = d.needs_pairing ? '' : 'none';
   $('#remote').style.display = d.actions.includes('button') ? '' : 'none';
   buttons($('#inputs'), d.inputs, 'input');
   buttons($('#apps'), d.apps, 'launch');
+  $('#inputsec').style.display = (d.inputs || []).length ? '' : 'none';
+  $('#appsec').style.display = (d.apps || []).length ? '' : 'none';
+  document.querySelectorAll('[data-act]').forEach(b => b.style.display = d.actions.includes(b.dataset.act) && (b.dataset.act !== 'pair' || d.needs_pairing) ? '' : 'none');
 }
 
 function addLog(ev) {

@@ -78,8 +78,9 @@ class Hub:
         a = self.adapters[device_id]
         st = await a.status()
         cur = self.state[device_id]
-        new = {**cur, "power": st.power, "reachable": st.reachable, "needs_pairing": st.needs_pairing, "detail": st.detail}
-        changed = any(new[k] != cur[k] for k in ("power", "reachable", "needs_pairing", "detail"))
+        # describe() is re-read because some adapters learn their app list after connecting
+        new = {**cur, **a.describe(), "power": st.power, "reachable": st.reachable, "needs_pairing": st.needs_pairing, "detail": st.detail}
+        changed = any(new.get(k) != cur.get(k) for k in ("power", "reachable", "needs_pairing", "detail", "apps", "inputs"))
         new["updated"] = time.time()
         self.state[device_id] = new
         if changed:
