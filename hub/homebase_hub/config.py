@@ -23,7 +23,7 @@ class DeviceConfig:
 
 @dataclass
 class HubConfig:
-    host: str = "127.0.0.1"
+    host: str = "0.0.0.0"
     port: int = 4900
     data_dir: Path = DEFAULT_DATA_DIR
     poll_seconds: float = 5.0
@@ -39,7 +39,7 @@ def load(path: str | os.PathLike | None = None) -> HubConfig:
         d = dict(d)
         devices.append(DeviceConfig(id=d.pop("id"), kind=d.pop("kind"), name=d.pop("name", ""), options=d))
     return HubConfig(
-        host=hub.get("host", "127.0.0.1"),
+        host=hub.get("host", "0.0.0.0"),
         port=int(hub.get("port", 4900)),
         data_dir=Path(hub.get("data_dir", DEFAULT_DATA_DIR)).expanduser(),
         poll_seconds=float(hub.get("poll_seconds", 5.0)),

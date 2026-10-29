@@ -10,6 +10,8 @@ import uvicorn
 
 from . import config
 from .app import create_app, make_hub
+from .discovery import Announcer
+from .pairing import Clients
 
 
 def main() -> None:
@@ -22,7 +24,11 @@ def main() -> None:
     cfg = config.load(args.config)
     if args.command == "pair-appletv":
         return pair_appletv(cfg, args.device)
-    uvicorn.run(create_app(make_hub(cfg)), host=cfg.host, port=cfg.port, log_level="info")
+    hub = make_hub(cfg)
+    # Only announce on the network when other devices can actually reach the hub.
+    announcer = Announcer(cfg.port) if cfg.host not in ("127.0.0.1", "localhost", "::1") else None
+    app = create_app(hub, clients=Clients(cfg.data_dir / "hub.sqlite"), announcer=announcer)
+    uvicorn.run(app, host=cfg.host, port=cfg.port, log_level="info")
 
 
 def pair_appletv(cfg: config.HubConfig, device_id: str | None) -> None:

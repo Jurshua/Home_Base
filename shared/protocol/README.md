@@ -68,7 +68,30 @@ Actions and their `arg`:
 | `POST /api/devices/{id}/refresh` | Check the device now instead of waiting for the next poll |
 | `GET /api/history?limit=50` | Recent commands, newest first |
 
-No pairing yet: the hub listens only on the Mac Mini itself until milestone 3 adds per-device keys.
+| `GET /api/me` | Who the hub thinks you are: `{name, id, local}` |
+
+## Finding the hub and pairing
+
+**Finding it.** The hub announces itself with Bonjour as `_homebase._tcp` on port 4900 (TXT `version`, `api`). Browse for that service (`NWBrowser` on Apple platforms) instead of asking for an address; keep a manual address field as a fallback. `GET /api/health` answers without a key, so an app can check it found a hub.
+
+**Who needs a key.** Anything on the Mac Mini itself (`127.0.0.1`) is trusted and needs nothing. Every other device pairs once and then sends its key on every request:
+
+- HTTP: `Authorization: Bearer <token>`
+- Live connection: the same header, or `ws://<hub>:4900/api/live?token=<token>`
+
+Without a valid key the hub answers `401` (HTTP) or closes the live connection with code `4401`. The same `4401` close happens to an open connection when its device is removed. On either, the app should forget its key and show the pairing screen. The test page (`/`), `/api/health` and `/api/pair` are the only things open without a key.
+
+**Pairing a new device.**
+
+1. On a device that's already trusted (the Mac Mini, or any paired device), `POST /api/pairing-codes` returns `{"code": "123456", "expires": <unix time>}`. Show the code big; it works once and for 5 minutes.
+2. On the new device, the person types the code. The app sends `POST /api/pair` with `{"code": "123456", "name": "Josh's iPhone"}` and gets back `{"token": "...", "client": {"id", "name", "created", "last_seen"}}`.
+3. Keep the token in the Keychain. It doesn't expire; it stops working only when the device is removed.
+
+`/api/pair` errors: `400` no name, `403` wrong or expired code, `429` too many wrong codes from this address (wait 5 minutes). After 10 wrong guesses in total, open codes stop working and a new one is needed.
+
+**Managing devices.** `GET /api/clients` lists paired devices (`id`, `name`, `created`, `last_seen`). `DELETE /api/clients/{id}` removes one and cuts off its open connections.
+
+**History names.** Commands from a paired device are logged under that device's name, whatever `source` it sends. Only the Mac Mini's own apps set `source` freely.
 
 ## Hue lights
 
